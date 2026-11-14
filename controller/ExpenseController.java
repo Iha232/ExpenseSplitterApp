@@ -3,10 +3,12 @@ package controller;
 import dao.DatabaseManager;
 import dao.ExpenseDAO;
 import dao.RoommateDAO;
+import dao.UserDAO;
 import model.Balance;
 import model.Expense;
 import model.ExpenseSplit;
 import model.Roommate;
+import model.User;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,10 +18,53 @@ import java.util.List;
 public class ExpenseController {
     private ExpenseDAO expenseDAO;
     private RoommateDAO roommateDAO;
+    private UserDAO userDAO;
+    private int currentUserId;
 
     public ExpenseController() {
         this.expenseDAO = new ExpenseDAO();
         this.roommateDAO = new RoommateDAO();
+        this.userDAO = new UserDAO();
+        this.currentUserId = -1;
+    }
+
+    public User registerUser(String username, String password, String email) throws Exception {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
+        if (password == null || password.length() < 4) {
+            throw new IllegalArgumentException("Password must be at least 4 characters");
+        }
+        if (userDAO.usernameExists(username.trim())) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+        return userDAO.registerUser(username.trim(), password, email != null ? email.trim() : "");
+    }
+
+    public User loginUser(String username, String password) throws Exception {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
+        if (password == null || password.isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty");
+        }
+        User user = userDAO.loginUser(username.trim(), password);
+        if (user != null) {
+            this.currentUserId = user.getUserId();
+        }
+        return user;
+    }
+
+    public void logout() {
+        this.currentUserId = -1;
+    }
+
+    public int getCurrentUserId() {
+        return currentUserId;
+    }
+
+    public boolean isLoggedIn() {
+        return currentUserId != -1;
     }
 
     public List<Roommate> getAllRoommates() throws Exception {

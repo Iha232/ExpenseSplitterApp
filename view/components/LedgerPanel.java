@@ -77,7 +77,7 @@ public class LedgerPanel extends JPanel {
 
         deleteButton = new JButton("Delete Selected");
         deleteButton.setBackground(new Color(198, 40, 40));
-        deleteButton.setForeground(Color.WHITE);
+        deleteButton.setForeground(Color.BLACK);
         deleteButton.setFocusPainted(false);
         deleteButton.addActionListener(e -> handleDeleteExpense());
     }

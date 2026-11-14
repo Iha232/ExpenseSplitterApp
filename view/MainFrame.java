@@ -8,6 +8,8 @@ import view.components.RoommateFormPanel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class MainFrame extends JFrame {
     private ExpenseController controller;
@@ -57,8 +59,36 @@ public class MainFrame extends JFrame {
         });
     }
 
+    private void handleLogout() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to logout?",
+                "Confirm Logout", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            controller.logout();
+            dispose();
+            
+            // Show auth frame again
+            SwingUtilities.invokeLater(() -> {
+                AuthFrame authFrame = new AuthFrame(controller);
+                authFrame.setVisible(true);
+            });
+        }
+    }
+
     private void layoutComponents() {
         setLayout(new BorderLayout(10, 10));
+
+        // Top panel with logout button
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        topPanel.setOpaque(false);
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.setBackground(new Color(198, 40, 40));
+        logoutButton.setForeground(Color.BLACK);
+        logoutButton.setFont(new Font("SansSerif", Font.BOLD, 11));
+        logoutButton.setFocusPainted(false);
+        logoutButton.addActionListener(e -> handleLogout());
+        topPanel.add(logoutButton);
 
         // West Panel - Form
         JPanel westPanel = new JPanel(new BorderLayout());
@@ -71,12 +101,17 @@ public class MainFrame extends JFrame {
         tabbedPane.addTab("Ledger", ledgerPanel);
         tabbedPane.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
+        // Combine top panel with center content
+        JPanel centerWrapper = new JPanel(new BorderLayout());
+        centerWrapper.add(topPanel, BorderLayout.NORTH);
+        centerWrapper.add(tabbedPane, BorderLayout.CENTER);
+
         // Bottom Panel
         bottomPanel.setPreferredSize(new Dimension(0, 80));
 
         // Add to main frame
         add(westPanel, BorderLayout.WEST);
-        add(tabbedPane, BorderLayout.CENTER);
+        add(centerWrapper, BorderLayout.CENTER);
         add(bottomPanel, BorderLayout.SOUTH);
 
         // Add padding around edges

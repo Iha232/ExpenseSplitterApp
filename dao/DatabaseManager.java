@@ -28,6 +28,16 @@ public class DatabaseManager {
     }
 
     private static void initializeDatabase(Connection conn) throws SQLException {
+        String createUsersTable = """
+            CREATE TABLE IF NOT EXISTS Users (
+                user_id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(50) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                email VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """;
+
         String createRoommatesTable = """
             CREATE TABLE IF NOT EXISTS Roommates (
                 member_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,6 +71,7 @@ public class DatabaseManager {
         """;
 
         try (Statement stmt = conn.createStatement()) {
+            stmt.execute(createUsersTable);
             stmt.execute(createRoommatesTable);
             stmt.execute(createExpensesTable);
             stmt.execute(createExpenseSplitsTable);

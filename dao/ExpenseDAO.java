@@ -127,12 +127,20 @@ public class ExpenseDAO {
         List<Balance> balances = new ArrayList<>();
         String sql = """
             SELECT r.member_id, r.name, r.upi_id,
-                   COALESCE(SUM(CASE WHEN e.payer_id = r.member_id THEN e.total_amount ELSE 0 END), 0) as total_paid,
-                   COALESCE(SUM(CASE WHEN es.member_id = r.member_id AND es.is_settled = FALSE THEN es.share_amount ELSE 0 END), 0) as total_owed
+                   COALESCE(paid.total_paid, 0) as total_paid,
+                   COALESCE(owed.total_owed, 0) as total_owed
             FROM Roommates r
-            LEFT JOIN Expenses e ON r.member_id = e.payer_id
-            LEFT JOIN ExpenseSplits es ON r.member_id = es.member_id
-            GROUP BY r.member_id, r.name, r.upi_id
+            LEFT JOIN (
+                SELECT payer_id as member_id, SUM(total_amount) as total_paid
+                FROM Expenses
+                GROUP BY payer_id
+            ) paid ON r.member_id = paid.member_id
+            LEFT JOIN (
+                SELECT es.member_id, SUM(es.share_amount) as total_owed
+                FROM ExpenseSplits es
+                WHERE es.is_settled = FALSE
+                GROUP BY es.member_id
+            ) owed ON r.member_id = owed.member_id
             ORDER BY r.name
         """;
 
@@ -147,7 +155,7 @@ public class ExpenseDAO {
                 b.setUpiId(rs.getString("upi_id"));
                 b.setTotalPaid(rs.getBigDecimal("total_paid"));
                 b.setTotalOwed(rs.getBigDecimal("total_owed"));
-                b.setNetBalance(rs.getBigDecimal("total_paid").subtract(rs.getBigDecimal("total_owed")));
+                b.setNetBalance(b.getTotalPaid().subtract(b.getTotalOwed()));
                 balances.add(b);
             }
         }
@@ -155,7 +163,11 @@ public class ExpenseDAO {
     }
 
     public boolean settleMemberDues(int memberId) throws SQLException {
-        String sql = "UPDATE ExpenseSplits SET is_settled = TRUE WHERE member_id = ? AND is_settled = FALSE";
+        String sql = """
+            UPDATE ExpenseSplits
+            SET is_settled = TRUE
+            WHERE member_id = ? AND is_settled = FALSE
+        """;
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

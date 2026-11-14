@@ -45,7 +45,7 @@ public class BottomPanel extends JPanel {
 
         settleButton = new JButton("Settle Up");
         settleButton.setBackground(new Color(46, 125, 50));
-        settleButton.setForeground(Color.WHITE);
+        settleButton.setForeground(Color.BLACK);
         settleButton.setFont(new Font("SansSerif", Font.BOLD, 12));
         settleButton.setFocusPainted(false);
 

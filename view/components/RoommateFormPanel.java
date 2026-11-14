@@ -5,21 +5,34 @@ import model.Roommate;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class RoommateFormPanel extends JPanel {
     private ExpenseController controller;
     private JTextField descriptionField;
     private JTextField amountField;
     private JComboBox<Roommate> payerComboBox;
-    private JPanel checkboxPanel;
+    private JButton participantsButton;
+    private JPopupMenu participantsPopup;
+    private Map<Integer, Boolean> participantSelection = new LinkedHashMap<>();
+    private List<Roommate> currentRoommates = new ArrayList<>();
     private JButton addExpenseButton;
+    private JButton addRoommateButton;
+    private JButton editRoommateButton;
     private JLabel statusLabel;
     private Runnable onExpenseAddedCallback;
 
@@ -42,24 +55,37 @@ public class RoommateFormPanel extends JPanel {
         descriptionField = new JTextField(20);
         amountField = new JTextField(10);
         payerComboBox = new JComboBox<>();
-        checkboxPanel = new JPanel();
-        checkboxPanel.setLayout(new BoxLayout(checkboxPanel, BoxLayout.Y_AXIS));
+
+        // Participants dropdown button
+        participantsButton = new JButton("Select participants ▼");
+        participantsButton.setFocusPainted(false);
+        participantsPopup = new JPopupMenu();
+        participantsButton.addActionListener(e -> participantsPopup.show(participantsButton, 0, participantsButton.getHeight()));
 
         addExpenseButton = new JButton("Add Expense");
         addExpenseButton.setBackground(new Color(46, 125, 50));
-        addExpenseButton.setForeground(Color.WHITE);
+        addExpenseButton.setForeground(Color.BLACK);
         addExpenseButton.setFont(new Font("SansSerif", Font.BOLD, 12));
         addExpenseButton.setFocusPainted(false);
+
+        this.addRoommateButton = new JButton("Add Roommate");
+        this.addRoommateButton.setBackground(new Color(33, 150, 243));
+        this.addRoommateButton.setForeground(Color.BLACK);
+        this.addRoommateButton.setFont(new Font("SansSerif", Font.BOLD, 12));
+        this.addRoommateButton.setFocusPainted(false);
+        this.addRoommateButton.addActionListener(e -> showAddRoommateDialog());
+
+        this.editRoommateButton = new JButton("Edit Roommate");
+        this.editRoommateButton.setBackground(new Color(255, 152, 0));
+        this.editRoommateButton.setForeground(Color.BLACK);
+        this.editRoommateButton.setFont(new Font("SansSerif", Font.BOLD, 12));
+        this.editRoommateButton.setFocusPainted(false);
+        this.editRoommateButton.addActionListener(e -> showEditRoommateDialog());
 
         statusLabel = new JLabel(" ");
         statusLabel.setForeground(Color.RED);
 
-        addExpenseButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                handleAddExpense();
-            }
-        });
+        addExpenseButton.addActionListener(e -> handleAddExpense());
     }
 
     private void layoutComponents() {
@@ -87,45 +113,59 @@ public class RoommateFormPanel extends JPanel {
         gbc.gridx = 1; gbc.weightx = 1.0;
         add(payerComboBox, gbc);
 
-        // Participants
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0;
+        // Add / Edit Roommate Buttons
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.CENTER;
+        add(addRoommateButton, gbc);
+        gbc.gridx = 1; gbc.gridy = 3;
+        add(editRoommateButton, gbc);
+
+        // Participants dropdown
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 1; gbc.weightx = 0; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
         add(new JLabel("Split Between:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1.0; gbc.fill = GridBagConstraints.BOTH;
-        JScrollPane scrollPane = new JScrollPane(checkboxPanel);
-        scrollPane.setPreferredSize(new Dimension(250, 120));
-        scrollPane.setBorder(BorderFactory.createEtchedBorder());
-        add(scrollPane, gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.fill = GridBagConstraints.HORIZONTAL;
+        add(participantsButton, gbc);
 
         // Add Expense Button
-        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.NONE;
         gbc.anchor = GridBagConstraints.CENTER;
         add(addExpenseButton, gbc);
 
         // Status Label
-        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         add(statusLabel, gbc);
     }
 
     public void loadRoommates() {
         try {
             List<Roommate> roommates = controller.getAllRoommates();
+            currentRoommates = roommates;
             payerComboBox.removeAllItems();
-            checkboxPanel.removeAll();
+            participantSelection.clear();
+            participantsPopup.removeAll();
 
             for (Roommate r : roommates) {
                 payerComboBox.addItem(r);
-                JCheckBox checkBox = new JCheckBox(r.toString());
-                checkBox.setName(String.valueOf(r.getMemberId()));
-                checkBox.setSelected(true);
-                checkboxPanel.add(checkBox);
+                participantSelection.put(r.getMemberId(), true);
+                JCheckBoxMenuItem item = new JCheckBoxMenuItem(r.toString());
+                item.setSelected(true);
+                item.addActionListener(ev -> {
+                    participantSelection.put(r.getMemberId(), item.isSelected());
+                    updateParticipantsButtonText();
+                });
+                participantsPopup.add(item);
             }
-
-            checkboxPanel.revalidate();
-            checkboxPanel.repaint();
             payerComboBox.revalidate();
+            updateParticipantsButtonText();
         } catch (Exception ex) {
             showStatus("Error loading roommates: " + ex.getMessage(), true);
         }
+    }
+
+    private void updateParticipantsButtonText() {
+        long selectedCount = participantSelection.values().stream().filter(v -> v).count();
+        participantsButton.setText("Split between (" + selectedCount + "/" + currentRoommates.size() + ") ▼");
     }
 
     private void handleAddExpense() {
@@ -162,10 +202,8 @@ public class RoommateFormPanel extends JPanel {
         }
 
         List<Integer> participantIds = new ArrayList<>();
-        for (Component comp : checkboxPanel.getComponents()) {
-            if (comp instanceof JCheckBox checkBox && checkBox.isSelected()) {
-                participantIds.add(Integer.parseInt(checkBox.getName()));
-            }
+        for (Map.Entry<Integer, Boolean> entry : participantSelection.entrySet()) {
+            if (entry.getValue()) participantIds.add(entry.getKey());
         }
 
         if (participantIds.isEmpty()) {
@@ -196,11 +234,17 @@ public class RoommateFormPanel extends JPanel {
     private void clearForm() {
         descriptionField.setText("");
         amountField.setText("");
-        for (Component comp : checkboxPanel.getComponents()) {
-            if (comp instanceof JCheckBox checkBox) {
-                checkBox.setSelected(true);
+        // reset all selections to true
+        for (Integer id : participantSelection.keySet()) {
+            participantSelection.put(id, true);
+        }
+        // update UI checkboxes
+        for (Component comp : participantsPopup.getComponents()) {
+            if (comp instanceof JCheckBoxMenuItem item) {
+                item.setSelected(true);
             }
         }
+        updateParticipantsButtonText();
     }
 
     private void showStatus(String message, boolean isError) {
@@ -210,5 +254,202 @@ public class RoommateFormPanel extends JPanel {
 
     public void refreshRoommates() {
         loadRoommates();
+    }
+
+    private void showAddRoommateDialog() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Add Roommate", true);
+        dialog.setLayout(new GridBagLayout());
+        dialog.setSize(350, 250);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Name
+        gbc.gridx = 0; gbc.gridy = 0;
+        dialog.add(new JLabel("Name:*"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        JTextField nameField = new JTextField(20);
+        dialog.add(nameField, gbc);
+
+        // Phone
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        dialog.add(new JLabel("Phone:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        JTextField phoneField = new JTextField(20);
+        dialog.add(phoneField, gbc);
+
+        // UPI ID
+        gbc.gridx = 0; gbc.gridy = 2;
+        dialog.add(new JLabel("UPI ID:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        JTextField upiField = new JTextField(20);
+        dialog.add(upiField, gbc);
+
+        // Status label
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        JLabel statusLabel = new JLabel(" ");
+        statusLabel.setForeground(Color.RED);
+        dialog.add(statusLabel, gbc);
+
+        // Buttons
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        JButton saveButton = new JButton("Save");
+        saveButton.setBackground(new Color(46, 125, 50));
+        saveButton.setForeground(Color.BLACK);
+        saveButton.setFocusPainted(false);
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.setForeground(Color.BLACK);
+        cancelButton.setFocusPainted(false);
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+        dialog.add(buttonPanel, gbc);
+
+        saveButton.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            String phone = phoneField.getText().trim();
+            String upi = upiField.getText().trim();
+
+            if (name.isEmpty()) {
+                statusLabel.setText("Name is required");
+                return;
+            }
+
+            try {
+                Roommate roommate = new Roommate();
+                roommate.setName(name);
+                roommate.setPhone(phone);
+                roommate.setUpiId(upi);
+                controller.addRoommate(roommate);
+                loadRoommates();
+                dialog.dispose();
+            } catch (Exception ex) {
+                statusLabel.setText("Error: " + ex.getMessage());
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.setVisible(true);
+    }
+
+    private void showEditRoommateDialog() {
+        if (currentRoommates.isEmpty()) {
+            showStatus("No roommates to edit", true);
+            return;
+        }
+
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Edit Roommate", true);
+        dialog.setLayout(new GridBagLayout());
+        dialog.setSize(350, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Roommate selector
+        gbc.gridx = 0; gbc.gridy = 0;
+        dialog.add(new JLabel("Select Roommate:*"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        JComboBox<Roommate> roommateCombo = new JComboBox<>(currentRoommates.toArray(new Roommate[0]));
+        dialog.add(roommateCombo, gbc);
+
+        // Name
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        dialog.add(new JLabel("Name:*"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        JTextField nameField = new JTextField(20);
+        dialog.add(nameField, gbc);
+
+        // Phone
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
+        dialog.add(new JLabel("Phone:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        JTextField phoneField = new JTextField(20);
+        dialog.add(phoneField, gbc);
+
+        // UPI ID
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0;
+        dialog.add(new JLabel("UPI ID:"), gbc);
+        gbc.gridx = 1; gbc.weightx = 1.0;
+        JTextField upiField = new JTextField(20);
+        dialog.add(upiField, gbc);
+
+        // Status label
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
+        JLabel statusLabel = new JLabel(" ");
+        statusLabel.setForeground(Color.RED);
+        dialog.add(statusLabel, gbc);
+
+        // Fill fields when selection changes
+        roommateCombo.addActionListener(e -> {
+            Roommate selected = (Roommate) roommateCombo.getSelectedItem();
+            if (selected != null) {
+                nameField.setText(selected.getName());
+                phoneField.setText(selected.getPhone() != null ? selected.getPhone() : "");
+                upiField.setText(selected.getUpiId() != null ? selected.getUpiId() : "");
+            }
+        });
+        // Initialize with first
+        if (roommateCombo.getItemCount() > 0) {
+            Roommate first = (Roommate) roommateCombo.getItemAt(0);
+            nameField.setText(first.getName());
+            phoneField.setText(first.getPhone() != null ? first.getPhone() : "");
+            upiField.setText(first.getUpiId() != null ? first.getUpiId() : "");
+        }
+
+        // Buttons
+        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        JButton saveButton = new JButton("Save");
+        saveButton.setBackground(new Color(46, 125, 50));
+        saveButton.setForeground(Color.BLACK);
+        saveButton.setFocusPainted(false);
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.setForeground(Color.BLACK);
+        cancelButton.setFocusPainted(false);
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+        dialog.add(buttonPanel, gbc);
+
+        saveButton.addActionListener(e -> {
+            Roommate selected = (Roommate) roommateCombo.getSelectedItem();
+            if (selected == null) {
+                statusLabel.setText("Select a roommate");
+                return;
+            }
+            String name = nameField.getText().trim();
+            String phone = phoneField.getText().trim();
+            String upi = upiField.getText().trim();
+
+            if (name.isEmpty()) {
+                statusLabel.setText("Name is required");
+                return;
+            }
+
+            try {
+                selected.setName(name);
+                selected.setPhone(phone);
+                selected.setUpiId(upi);
+                controller.updateRoommate(selected);
+                loadRoommates();
+                dialog.dispose();
+            } catch (Exception ex) {
+                statusLabel.setText("Error: " + ex.getMessage());
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.setVisible(true);
     }
 }
