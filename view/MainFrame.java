@@ -208,22 +208,27 @@ public class MainFrame extends JFrame {
         setJMenuBar(menuBar);
     }
     
-    // ── Toolbar button styling constants (neutral, modern appearance) ──────────
-    // Neutral buttons: white/light grey background, subtle grey border, dark text
-    private static final Color BTN_ACTION_BG      = new Color(250, 250, 250);   // white/light grey
-    private static final Color BTN_ACTION_HOVER   = new Color(235, 235, 235);   // light grey hover
-    private static final Color BTN_PRESSED        = new Color(220, 220, 220);   // slightly darker grey pressed
-    private static final Color BTN_FG             = new Color(51, 51, 51);      // dark grey text
+    // ── Toolbar button styling constants (matching Add Expense button) ──────────
+    // Reference: RoommateFormPanel.addExpenseButton uses:
+    //   Background: new Color(46, 125, 50)  -- green
+    //   Foreground: Color.BLACK
+    //   Font: SansSerif, BOLD, 12
+    //   FocusPainted: false
+    //   Border: default (no custom border)
+    private static final Color BTN_ACTION_BG      = new Color(46, 125, 50);   // green
+    private static final Color BTN_ACTION_HOVER   = new Color(56, 142, 60);   // lighter green
+    private static final Color BTN_PRESSED        = new Color(36, 105, 40);   // darker green
+    private static final Color BTN_FG             = Color.BLACK;
 
-    private static final Color BTN_BORDER         = new Color(200, 200, 200);   // subtle grey border
+    private static final Color BTN_BORDER         = new Color(30, 90, 35);    // dark green border
 
     /**
-     * Creates the bottom toolbar with two neutral-styled JButton components:
+     * Creates the bottom toolbar with two buttons matching the "Add Expense" button style:
      * Refresh All and Export Report.
      * 
      * Demonstrates:
      * - JToolBar / JButton creation
-     * - Custom painting (icons drawn with Java2D, no external library)
+     * - Custom painting (matching Add Expense button style)
      * - MouseListener for hover / pressed visual feedback
      * - Hand cursor on hover
      * - ActionListener — all existing handler methods are reused unchanged
@@ -239,7 +244,7 @@ public class MainFrame extends JFrame {
 
         // ── Refresh All ──
         JButton refreshBtn = makeActionButton(
-                "Refresh All", "refresh",
+                "Refresh All",
                 "Refresh all data (F5)");
         refreshBtn.addActionListener(e -> refreshAll());
         toolBar.add(refreshBtn);
@@ -248,7 +253,7 @@ public class MainFrame extends JFrame {
 
         // ── Export Report ──
         JButton exportBtn = makeActionButton(
-                "Export Report", "export",
+                "Export Report",
                 "Export expense report (Ctrl+E)");
         exportBtn.addActionListener(e -> exportExpenseReport());
         toolBar.add(exportBtn);
@@ -260,31 +265,24 @@ public class MainFrame extends JFrame {
     /**
      * Builds a single styled JButton for the toolbar matching the "Add Expense" button style.
      * 
-     * @param label   visible button text
-     * @param iconKey key that selects which icon to draw
-     * @param tip     tooltip text
+     * @param label visible button text
+     * @param tip   tooltip text
      * @return a styled JButton
      */
-    private JButton makeActionButton(String label, String iconKey, String tip) {
+    private JButton makeActionButton(String label, String tip) {
         
         // State holder for hover/pressed colors
         final Color[] currentBg = { BTN_ACTION_BG };
 
-        Icon icon = makeActionIcon(iconKey);
-
-        JButton btn = new JButton(label, icon) {
+        JButton btn = new JButton(label) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                                     RenderingHints.VALUE_ANTIALIAS_ON);
-                // Rounded fill
+                // Fill with current background color (rectangular, no rounded corners)
                 g2.setColor(currentBg[0]);
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
-                // Border
-                g2.setColor(BTN_BORDER);
-                g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f,
-                        getWidth() - 1, getHeight() - 1, 10, 10));
+                g2.fillRect(0, 0, getWidth(), getHeight());
                 g2.dispose();
                 super.paintComponent(g);
             }
@@ -293,13 +291,11 @@ public class MainFrame extends JFrame {
         btn.setToolTipText(tip);
         btn.setForeground(BTN_FG);
         btn.setFont(new Font("SansSerif", Font.BOLD, 12));  // Bold like Add Expense
-        btn.setIconTextGap(6);
-        btn.setHorizontalTextPosition(SwingConstants.RIGHT);
-
-        // Transparent defaults so our custom paint shows through
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
         btn.setFocusPainted(false);
+
+        // Use default border and content area (like Add Expense button)
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(true);
         btn.setOpaque(false);
 
         // Padding - match Add Expense button
@@ -346,87 +342,6 @@ public class MainFrame extends JFrame {
         sep.setPreferredSize(new Dimension(14, 32));
         sep.setOpaque(false);
         return sep;
-    }
-
-    /**
-     * Draws a simple vector icon for each toolbar button using Java2D.
-     * No external icon library is required.
-     *
-     * @param key   one of the iconKey strings passed to makeActionButton
-     * @return      a 20×20 Icon
-     */
-    private Icon makeActionIcon(String key) {
-        final int SIZE = 20;
-        Color iconColor = BTN_FG;
-        
-        return new Icon() {
-            @Override public int getIconWidth()  { return SIZE; }
-            @Override public int getIconHeight() { return SIZE; }
-
-            @Override
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
-                                    RenderingHints.VALUE_STROKE_PURE);
-                g2.setColor(iconColor);
-                g2.translate(x, y);
-                g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND,
-                                             BasicStroke.JOIN_ROUND));
-
-                switch (key) {
-
-                    // ➕  New Expense — plus sign inside a circle
-                    case "new_expense" -> {
-                        g2.drawOval(1, 1, SIZE - 2, SIZE - 2);
-                        g2.drawLine(SIZE / 2, 5, SIZE / 2, SIZE - 5);
-                        g2.drawLine(5, SIZE / 2, SIZE - 5, SIZE / 2);
-                    }
-
-                    // 👤+  Add Roommate — person silhouette with a small +
-                    case "add_roommate" -> {
-                        // Head
-                        g2.drawOval(3, 1, 8, 7);
-                        // Body arc
-                        g2.drawArc(1, 10, 12, 10, 0, 180);
-                        // Plus sign (top-right)
-                        g2.drawLine(15, 7,  15, 13);
-                        g2.drawLine(12, 10, 18, 10);
-                    }
-
-                    // ↺  Refresh — circular arrows
-                    case "refresh" -> {
-                        // Outer arc (top-right portion)
-                        g2.drawArc(2, 2, SIZE - 4, SIZE - 4, 30, 270);
-                        // Arrow head at the end of the arc
-                        int[] ax = { SIZE - 5, SIZE - 2, SIZE - 1 };
-                        int[] ay = { 4,        2,        7        };
-                        g2.fillPolygon(ax, ay, 3);
-                    }
-
-                    // 📄  Export Report — page with an upward arrow
-                    case "export" -> {
-                        // Page outline
-                        g2.drawRect(3, 1, 11, 15);
-                        // Fold corner
-                        g2.drawLine(10, 1, 14, 5);
-                        g2.drawLine(10, 1, 10, 5);
-                        g2.drawLine(10, 5, 14, 5);
-                        // Up-arrow inside page
-                        g2.drawLine(8, 13, 8, 7);
-                        g2.drawLine(8, 7, 6, 10);
-                        g2.drawLine(8, 7, 10, 10);
-                    }
-
-                    default -> {
-                        // Fallback: simple square
-                        g2.drawRect(3, 3, SIZE - 6, SIZE - 6);
-                    }
-                }
-                g2.dispose();
-            }
-        };
     }
 
     private void layoutComponents() {
