@@ -1,10 +1,31 @@
 package model;
 
+import interfaces.Exportable;
+
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class Expense {
+/**
+ * Expense model implementing Exportable interface.
+ * 
+ * This class demonstrates:
+ * - Interface implementation (Exportable)
+ * - Export functionality with PrintWriter
+ * - Complex object export with nested objects
+ * 
+ * Syllabus Topics:
+ * - Interface implementation
+ * - PrintWriter for formatted output
+ * - Complex object export
+ * - Date formatting
+ * 
+ * @see interfaces.Exportable
+ */
+public class Expense implements Exportable {
     private int expenseId;
     private int payerId;
     private String description;
@@ -12,6 +33,8 @@ public class Expense {
     private LocalDate expenseDate;
     private List<ExpenseSplit> splits;
     private String payerName;
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
     public Expense() {}
 
@@ -77,5 +100,29 @@ public class Expense {
 
     public void setPayerName(String payerName) {
         this.payerName = payerName;
+    }
+    
+    @Override
+    public void export(PrintWriter writer) throws IOException {
+        writer.println("Expense ID: " + expenseId);
+        writer.println("  Date: " + (expenseDate != null ? expenseDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy")) : "N/A"));
+        writer.println("  Description: " + (description != null ? description : "N/A"));
+        writer.println("  Payer: " + (payerName != null ? payerName : "ID: " + payerId));
+        writer.println("  Amount: " + (totalAmount != null ? "₹" + totalAmount.setScale(2, java.math.RoundingMode.HALF_UP) : "N/A"));
+        if (splits != null && !splits.isEmpty()) {
+            writer.println("  Splits:");
+            for (ExpenseSplit split : splits) {
+                writer.println("    - " + split.getMemberName() + ": " + 
+                    (split.getShareAmount() != null ? "₹" + split.getShareAmount().setScale(2, java.math.RoundingMode.HALF_UP) : "N/A") +
+                    " (" + (split.isSettled() ? "SETTLED" : "PENDING") + ")");
+            }
+        }
+        writer.println();
+    }
+    
+    @Override
+    public String toExportString() {
+        return String.format("Expense{id=%d, description='%s', amount=%s, date=%s, payer='%s'}", 
+            expenseId, description, totalAmount, expenseDate, payerName);
     }
 }

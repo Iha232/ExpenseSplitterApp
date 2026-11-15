@@ -1,8 +1,25 @@
 package model;
 
+import interfaces.Exportable;
+
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.math.BigDecimal;
 
-public class ExpenseSplit {
+/**
+ * ExpenseSplit model implementing Exportable interface.
+ * 
+ * This class demonstrates:
+ * - Interface implementation (Exportable)
+ * - Export functionality with PrintWriter
+ * 
+ * Syllabus Topics:
+ * - Interface implementation
+ * - PrintWriter for formatted output
+ * 
+ * @see interfaces.Exportable
+ */
+public class ExpenseSplit implements Exportable {
     private int splitId;
     private int expenseId;
     private int memberId;
@@ -65,5 +82,19 @@ public class ExpenseSplit {
 
     public void setMemberName(String memberName) {
         this.memberName = memberName;
+    }
+    
+    @Override
+    public void export(PrintWriter writer) throws IOException {
+        writer.println("  Split for: " + (memberName != null ? memberName : "Member ID: " + memberId));
+        writer.println("    Amount: " + (shareAmount != null ? "₹" + shareAmount.setScale(2, java.math.RoundingMode.HALF_UP) : "N/A"));
+        writer.println("    Status: " + (isSettled ? "SETTLED" : "PENDING"));
+        writer.println();
+    }
+    
+    @Override
+    public String toExportString() {
+        return String.format("ExpenseSplit{id=%d, expenseId=%d, memberId=%d, amount=%s, settled=%s}", 
+            splitId, expenseId, memberId, shareAmount, isSettled);
     }
 }

@@ -452,4 +452,13 @@ public class RoommateFormPanel extends JPanel {
 
         dialog.setVisible(true);
     }
+    
+    /**
+     * Gets the description field for external access.
+     * 
+     * @return the description field
+     */
+    public JTextField getDescriptionField() {
+        return descriptionField;
+    }
 }

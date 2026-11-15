@@ -130,4 +130,22 @@ public class BottomPanel extends JPanel {
         statusLabel.setText(message);
         statusLabel.setForeground(isError ? Color.RED : new Color(46, 125, 50));
     }
+    
+    /**
+     * Gets the settle combo box for external access.
+     * 
+     * @return the settle combo box
+     */
+    public JComboBox<Balance> getSettleComboBox() {
+        return settleComboBox;
+    }
+    
+    /**
+     * Triggers the settle up action programmatically.
+     * 
+     * Demonstrates: Programmatic event triggering
+     */
+    public void triggerSettleUp() {
+        handleSettleUp();
+    }
 }

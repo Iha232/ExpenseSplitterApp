@@ -1,13 +1,35 @@
 package model;
 
-import java.time.LocalDateTime;
+import interfaces.Exportable;
 
-public class User {
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+/**
+ * User model implementing Exportable interface.
+ * 
+ * This class demonstrates:
+ * - Interface implementation (Exportable)
+ * - Export functionality with PrintWriter
+ * - Date formatting
+ * 
+ * Syllabus Topics:
+ * - Interface implementation
+ * - PrintWriter for formatted output
+ * - Date formatting
+ * 
+ * @see interfaces.Exportable
+ */
+public class User implements Exportable {
     private int userId;
     private String username;
     private String passwordHash;
     private String email;
     private LocalDateTime createdAt;
+    
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss");
 
     public User() {}
 
@@ -55,5 +77,20 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    @Override
+    public void export(PrintWriter writer) throws IOException {
+        writer.println("User: " + username + " (ID: " + userId + ")");
+        writer.println("  Email: " + (email != null ? email : "N/A"));
+        writer.println("  Created: " + (createdAt != null ? createdAt.format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")) : "N/A"));
+        writer.println();
+    }
+    
+    @Override
+    public String toExportString() {
+        return String.format("User{id=%d, username='%s', email='%s', created=%s}", 
+            userId, username, email != null ? email : "N/A", 
+            createdAt != null ? createdAt.format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")) : "N/A");
     }
 }

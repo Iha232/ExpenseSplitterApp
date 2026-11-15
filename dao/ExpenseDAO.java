@@ -1,8 +1,10 @@
 package dao;
 
+import interfaces.ExpenseRepository;
 import model.Expense;
 import model.ExpenseSplit;
 import model.Balance;
+import exceptions.InvalidExpenseException;
 
 import java.math.BigDecimal;
 import java.sql.*;
@@ -10,9 +12,33 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExpenseDAO {
+/**
+ * Expense Data Access Object implementing ExpenseRepository interface.
+ * 
+ * This class demonstrates:
+ * - Interface implementation (ExpenseRepository)
+ * - Polymorphism through interface implementation
+ * - JDBC operations with proper exception handling
+ * - try-with-resources for resource management
+ * - Batch operations
+ * - Transaction management
+ * 
+ * Syllabus Topics:
+ * - Interface implementation
+ * - Polymorphism
+ * - JDBC
+ * - PreparedStatement
+ * - Batch operations
+ * - Transaction management
+ * - Exception handling
+ * - try-with-resources
+ * 
+ * @see interfaces.ExpenseRepository
+ */
+public class ExpenseDAO implements ExpenseRepository {
 
-    public int addExpense(Expense expense) throws SQLException {
+    @Override
+    public int addExpense(Expense expense) throws SQLException, InvalidExpenseException {
         String insertExpenseSql = "INSERT INTO Expenses (payer_id, description, total_amount, expense_date) VALUES (?, ?, ?, ?)";
         String insertSplitSql = "INSERT INTO ExpenseSplits (expense_id, member_id, share_amount, is_settled) VALUES (?, ?, ?, ?)";
 
@@ -65,6 +91,7 @@ public class ExpenseDAO {
         }
     }
 
+    @Override
     public List<Expense> getAllExpenses() throws SQLException {
         List<Expense> expenses = new ArrayList<>();
         String sql = """
@@ -93,6 +120,7 @@ public class ExpenseDAO {
         return expenses;
     }
 
+    @Override
     public List<ExpenseSplit> getSplitsForExpense(int expenseId) throws SQLException {
         List<ExpenseSplit> splits = new ArrayList<>();
         String sql = """
@@ -123,6 +151,7 @@ public class ExpenseDAO {
         return splits;
     }
 
+    @Override
     public List<Balance> getBalances() throws SQLException {
         List<Balance> balances = new ArrayList<>();
         String sql = """
@@ -162,6 +191,7 @@ public class ExpenseDAO {
         return balances;
     }
 
+    @Override
     public boolean settleMemberDues(int memberId) throws SQLException {
         String sql = """
             UPDATE ExpenseSplits
@@ -177,6 +207,7 @@ public class ExpenseDAO {
         }
     }
 
+    @Override
     public boolean deleteExpense(int expenseId) throws SQLException {
         String sql = "DELETE FROM Expenses WHERE expense_id = ?";
 

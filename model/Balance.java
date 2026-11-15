@@ -1,8 +1,25 @@
 package model;
 
+import interfaces.Exportable;
+
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.math.BigDecimal;
 
-public class Balance {
+/**
+ * Balance model implementing Exportable interface.
+ * 
+ * This class demonstrates:
+ * - Interface implementation (Exportable)
+ * - Export functionality with PrintWriter
+ * 
+ * Syllabus Topics:
+ * - Interface implementation
+ * - PrintWriter for formatted output
+ * 
+ * @see interfaces.Exportable
+ */
+public class Balance implements Exportable {
     private int memberId;
     private String memberName;
     private String upiId;
@@ -77,5 +94,22 @@ public class Balance {
         } else {
             return "Settled";
         }
+    }
+    
+    @Override
+    public void export(PrintWriter writer) throws IOException {
+        writer.println("Balance for: " + memberName + " (ID: " + memberId + ")");
+        writer.println("  UPI ID: " + (upiId != null ? upiId : "N/A"));
+        writer.println("  Total Paid: ₹" + (totalPaid != null ? totalPaid.setScale(2, java.math.RoundingMode.HALF_UP) : "0.00"));
+        writer.println("  Total Owed: ₹" + (totalOwed != null ? totalOwed.setScale(2, java.math.RoundingMode.HALF_UP) : "0.00"));
+        writer.println("  Net Balance: ₹" + (netBalance != null ? netBalance.setScale(2, java.math.RoundingMode.HALF_UP) : "0.00"));
+        writer.println("  Status: " + getStatus());
+        writer.println();
+    }
+    
+    @Override
+    public String toExportString() {
+        return String.format("Balance{memberId=%d, memberName='%s', totalPaid=%s, totalOwed=%s, netBalance=%s, status='%s'}", 
+            memberId, memberName, totalPaid, totalOwed, netBalance, getStatus());
     }
 }
