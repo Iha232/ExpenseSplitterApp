@@ -220,6 +220,81 @@ public class ExpenseController {
         return expenseRepository.deleteExpense(expenseId);
     }
 
+    /**
+     * Smart search across all expense fields.
+     *
+     * Strategy (in order):
+     *  1. If the query is a pure integer → search by Expense ID.
+     *  2. If the query matches a date pattern (yyyy-MM-dd or dd/MM/yyyy
+     *     or dd MMM yyyy) → search by exact date.
+     *  3. If the query starts with "₹" or is a valid decimal number →
+     *     search by exact amount.
+     *  4. Otherwise → search by description first; if 0 results,
+     *     search by payer name; merge both result sets (deduplicated).
+     *
+     * All paths delegate to PreparedStatement-backed DAO methods.
+     * No data is modified (SELECT only).
+     *
+     * @param query  raw text from the search field
+     * @return       list of matching Expense objects, never null
+     * @throws Exception on database error
+     */
+    public List<Expense> searchExpenses(String query) throws Exception {
+        if (query == null || query.trim().isEmpty()) {
+            return expenseRepository.getAllExpenses();
+        }
+
+        String trimmed = query.trim();
+
+        // 1. Pure integer → search by ID
+        try {
+            int id = Integer.parseInt(trimmed);
+            return expenseRepository.searchExpensesById(id);
+        } catch (NumberFormatException ignored) {}
+
+        // 2. Date patterns: yyyy-MM-dd  |  dd/MM/yyyy  |  dd MMM yyyy
+        java.time.LocalDate parsedDate = tryParseDate(trimmed);
+        if (parsedDate != null) {
+            return expenseRepository.searchExpensesByDate(parsedDate);
+        }
+
+        // 3. Amount: strip leading ₹ symbol and try BigDecimal parse
+        String amountCandidate = trimmed.startsWith("₹") ? trimmed.substring(1).trim() : trimmed;
+        try {
+            java.math.BigDecimal amount = new java.math.BigDecimal(amountCandidate);
+            List<Expense> byAmount = expenseRepository.searchExpensesByAmount(amount);
+            if (!byAmount.isEmpty()) {
+                return byAmount;
+            }
+        } catch (NumberFormatException ignored) {}
+
+        // 4. Text search: description + payer (deduplicated by expense_id)
+        List<Expense> byDesc  = expenseRepository.searchExpensesByDescription(trimmed);
+        List<Expense> byPayer = expenseRepository.searchExpensesByPayer(trimmed);
+
+        // Merge, keeping insertion order and no duplicates
+        java.util.LinkedHashMap<Integer, Expense> merged = new java.util.LinkedHashMap<>();
+        for (Expense e : byDesc)  { merged.put(e.getExpenseId(), e); }
+        for (Expense e : byPayer) { merged.putIfAbsent(e.getExpenseId(), e); }
+
+        return new ArrayList<>(merged.values());
+    }
+
+    /**
+     * Attempts to parse a date string in common formats.
+     * Returns null if no format matches.
+     */
+    private java.time.LocalDate tryParseDate(String s) {
+        String[] patterns = {"yyyy-MM-dd", "dd/MM/yyyy", "dd MMM yyyy", "MM/dd/yyyy"};
+        for (String pattern : patterns) {
+            try {
+                return java.time.LocalDate.parse(s,
+                        java.time.format.DateTimeFormatter.ofPattern(pattern));
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
     public void shutdown() {
         DatabaseManager.closeConnection();
     }

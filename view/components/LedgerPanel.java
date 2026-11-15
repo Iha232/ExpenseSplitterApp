@@ -145,40 +145,47 @@ public class LedgerPanel extends JPanel {
         }
     }
 
+    /**
+     * Performs a database-backed search via the controller.
+     *
+     * Accepts any of the following query formats:
+     *   - Integer          → search by Expense ID
+     *   - Date string      → search by exact date (yyyy-MM-dd, dd/MM/yyyy, dd MMM yyyy)
+     *   - Decimal / ₹...  → search by exact amount
+     *   - Any other text   → search description + payer name (merged, deduplicated)
+     *
+     * An empty query restores the full ledger.
+     * No database records are modified (SELECT-only paths).
+     *
+     * Demonstrates: controller integration, MVC pattern, PreparedStatement delegation
+     */
     public void performSearch() {
         String query = searchField.getText().trim();
+
+        // Empty query → restore full ledger
         if (query.isEmpty()) {
             loadLedger();
             return;
         }
-        
+
         try {
-            List<model.Expense> allExpenses = new java.util.ArrayList<>();
-            // We need to get expenses from controller - this would need controller access
-            // For now, we'll filter the current table data
-            filterTable(query);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Search failed: " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            // Delegate to controller which picks the right DAO search method
+            List<Expense> results = controller.searchExpenses(query);
+
+            // Render results (or show "no match" hint)
+            if (results.isEmpty()) {
+                tableModel.setRowCount(0);
+                JOptionPane.showMessageDialog(this,
+                        "No transactions found matching: \"" + query + "\"",
+                        "No Results", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                updateLedger(results);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Search failed: " + ex.getMessage(),
+                    "Search Error", JOptionPane.ERROR_MESSAGE);
         }
-    }
-    
-    /**
-     * Filters the table based on search query.
-     * 
-     * Demonstrates: String operations for filtering, Iterator
-     * 
-     * @param query search query
-     */
-    private void filterTable(String query) {
-        String normalizedQuery = query.toLowerCase();
-        tableModel.setRowCount(0);
-        
-        // We would need access to the original data - this is a simplified version
-        // In a full implementation, we'd get data from controller
-        JOptionPane.showMessageDialog(this, "Search feature requires controller integration.\nUse the main window search (Ctrl+F).",
-                "Search", JOptionPane.INFORMATION_MESSAGE);
-        loadLedger();
     }
     
     /**

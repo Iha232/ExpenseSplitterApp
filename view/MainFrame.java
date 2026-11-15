@@ -16,6 +16,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.util.List;
 
@@ -155,18 +158,6 @@ public class MainFrame extends JFrame {
         
         fileMenu.addSeparator();
         
-        JMenuItem backupItem = new JMenuItem("Backup Data");
-        backupItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_DOWN_MASK));
-        backupItem.addActionListener(e -> backupData());
-        fileMenu.add(backupItem);
-        
-        JMenuItem restoreItem = new JMenuItem("Restore Data");
-        restoreItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_DOWN_MASK));
-        restoreItem.addActionListener(e -> restoreData());
-        fileMenu.add(restoreItem);
-        
-        fileMenu.addSeparator();
-        
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, KeyEvent.CTRL_DOWN_MASK));
         exitItem.addActionListener(e -> handleLogout());
@@ -182,13 +173,6 @@ public class MainFrame extends JFrame {
         refreshItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0));
         refreshItem.addActionListener(e -> refreshAll());
         editMenu.add(refreshItem);
-        
-        editMenu.addSeparator();
-        
-        JMenuItem searchItem = new JMenuItem("Search Expenses");
-        searchItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK));
-        searchItem.addActionListener(e -> searchField.requestFocusInWindow());
-        editMenu.add(searchItem);
         
         menuBar.add(editMenu);
         
@@ -225,67 +209,256 @@ public class MainFrame extends JFrame {
         setJMenuBar(menuBar);
     }
     
+    // ── Toolbar button styling constants (matching Add Expense button) ─────────
+    // Reference: RoommateFormPanel.addExpenseButton uses:
+    //   Background: new Color(46, 125, 50)  -- green
+    //   Foreground: Color.BLACK
+    //   Font: SansSerif, BOLD, 12
+    //   FocusPainted: false
+    //   Border: default (no custom border)
+    private static final Color BTN_ACTION_BG      = new Color(46, 125, 50);   // green
+    private static final Color BTN_ACTION_HOVER   = new Color(56, 142, 60);   // lighter green
+    private static final Color BTN_PRESSED        = new Color(36, 105, 40);   // darker green
+    private static final Color BTN_FG             = Color.BLACK;
+
+    private static final Color BTN_BORDER         = new Color(30, 90, 35);    // dark green border
+
     /**
-     * Creates the toolbar with quick action buttons.
+     * Creates the bottom toolbar with four fully-styled JButton components
+     * matching the "Add Expense" button style.
      * 
      * Demonstrates:
-     * - JToolBar creation
-     * - JButton with icons (text only for simplicity)
-     * - ActionListener for buttons
-     * - Separators
+     * - JToolBar / JButton creation
+     * - Custom painting (icons drawn with Java2D, no external library)
+     * - MouseListener for hover / pressed visual feedback
+     * - Hand cursor on hover
+     * - ActionListener — all existing handler methods are reused unchanged
      */
     private void createToolBar() {
         toolBar = new JToolBar("Main Toolbar");
         toolBar.setFloatable(false);
-        toolBar.setRollover(true);
-        
-        // New Expense button
-        JButton newExpenseBtn = new JButton("New Expense");
-        newExpenseBtn.setToolTipText("Add new expense (Ctrl+N)");
-        newExpenseBtn.addActionListener(e -> formPanel.getDescriptionField().requestFocusInWindow());
+        toolBar.setRollover(false);
+        toolBar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, BTN_BORDER),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+        toolBar.setBackground(new Color(252, 252, 253));
+
+        // ── New Expense ──
+        JButton newExpenseBtn = makeActionButton(
+                "New Expense", "new_expense",
+                "Add a new shared expense (Ctrl+N)");
+        newExpenseBtn.addActionListener(
+                e -> formPanel.getDescriptionField().requestFocusInWindow());
         toolBar.add(newExpenseBtn);
-        
-        // New Roommate button
-        JButton newRoommateBtn = new JButton("Add Roommate");
-        newRoommateBtn.setToolTipText("Add new roommate");
-        newRoommateBtn.addActionListener(e -> {
+
+        toolBar.add(makeToolbarSeparator());
+
+        // ── Add Roommate ──
+        JButton addRoommateBtn = makeActionButton(
+                "Add Roommate", "add_roommate",
+                "Add a new roommate");
+        addRoommateBtn.addActionListener(e -> {
             try {
-                java.lang.reflect.Method method = formPanel.getClass().getDeclaredMethod("showAddRoommateDialog");
-                method.setAccessible(true);
-                method.invoke(formPanel);
-            } catch (Exception ex) {
-                // Ignore
-            }
+                java.lang.reflect.Method m =
+                        formPanel.getClass().getDeclaredMethod("showAddRoommateDialog");
+                m.setAccessible(true);
+                m.invoke(formPanel);
+            } catch (Exception ex) { /* ignore */ }
         });
-        toolBar.add(newRoommateBtn);
-        
-        toolBar.addSeparator();
-        
-        // Refresh button
-        JButton refreshBtn = new JButton("Refresh All");
-        refreshBtn.setToolTipText("Refresh all data (F5)");
+        toolBar.add(addRoommateBtn);
+
+        toolBar.add(makeToolbarSeparator());
+
+        // ── Refresh All ──
+        JButton refreshBtn = makeActionButton(
+                "Refresh All", "refresh",
+                "Refresh all data (F5)");
         refreshBtn.addActionListener(e -> refreshAll());
         toolBar.add(refreshBtn);
-        
-        toolBar.addSeparator();
-        
-        // Export button
-        JButton exportBtn = new JButton("Export Report");
-        exportBtn.setToolTipText("Export expense report (Ctrl+E)");
+
+        toolBar.add(makeToolbarSeparator());
+
+        // ── Export Report ──
+        JButton exportBtn = makeActionButton(
+                "Export Report", "export",
+                "Export expense report (Ctrl+E)");
         exportBtn.addActionListener(e -> exportExpenseReport());
         toolBar.add(exportBtn);
+
+        // Push status label to the right
+        toolBar.add(Box.createHorizontalGlue());
+    }
+
+    /**
+     * Builds a single styled JButton for the toolbar matching the "Add Expense" button style.
+     * 
+     * @param label   visible button text
+     * @param iconKey key that selects which icon to draw
+     * @param tip     tooltip text
+     * @return a styled JButton
+     */
+    private JButton makeActionButton(String label, String iconKey, String tip) {
         
-        // Backup button
-        JButton backupBtn = new JButton("Backup");
-        backupBtn.setToolTipText("Backup data (Ctrl+B)");
-        backupBtn.addActionListener(e -> backupData());
-        toolBar.add(backupBtn);
+        // State holder for hover/pressed colors
+        final Color[] currentBg = { BTN_ACTION_BG };
+
+        Icon icon = makeActionIcon(iconKey);
+
+        JButton btn = new JButton(label, icon) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                // Rounded fill
+                g2.setColor(currentBg[0]);
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
+                // Border
+                g2.setColor(BTN_BORDER);
+                g2.draw(new RoundRectangle2D.Float(0.5f, 0.5f,
+                        getWidth() - 1, getHeight() - 1, 10, 10));
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        btn.setToolTipText(tip);
+        btn.setForeground(BTN_FG);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 12));  // Bold like Add Expense
+        btn.setIconTextGap(6);
+        btn.setHorizontalTextPosition(SwingConstants.RIGHT);
+
+        // Transparent defaults so our custom paint shows through
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setOpaque(false);
+
+        // Padding - match Add Expense button
+        btn.setMargin(new Insets(6, 14, 6, 14));
+
+        // Hand cursor
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        // Hover / press effects
+        btn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) {
+                currentBg[0] = BTN_ACTION_HOVER;
+                btn.repaint();
+            }
+            @Override public void mouseExited(MouseEvent e) {
+                currentBg[0] = BTN_ACTION_BG;
+                btn.repaint();
+            }
+            @Override public void mousePressed(MouseEvent e) {
+                currentBg[0] = BTN_PRESSED;
+                btn.repaint();
+            }
+            @Override public void mouseReleased(MouseEvent e) {
+                currentBg[0] = btn.contains(e.getPoint()) ? BTN_ACTION_HOVER : BTN_ACTION_BG;
+                btn.repaint();
+            }
+        });
+
+        return btn;
+    }
+
+    /**
+     * Returns a thin separator component for spacing between toolbar groups.
+     */
+    private Component makeToolbarSeparator() {
+        JPanel sep = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.setColor(BTN_BORDER);
+                int cx = getWidth() / 2;
+                g.drawLine(cx, 6, cx, getHeight() - 6);
+            }
+        };
+        sep.setPreferredSize(new Dimension(14, 32));
+        sep.setOpaque(false);
+        return sep;
+    }
+
+    /**
+     * Draws a simple vector icon for each toolbar button using Java2D.
+     * No external icon library is required.
+     *
+     * @param key   one of the iconKey strings passed to makeActionButton
+     * @return      a 20×20 Icon
+     */
+    private Icon makeActionIcon(String key) {
+        final int SIZE = 20;
+        Color iconColor = BTN_FG;
         
-        // Restore button
-        JButton restoreBtn = new JButton("Restore");
-        restoreBtn.setToolTipText("Restore from backup (Ctrl+R)");
-        restoreBtn.addActionListener(e -> restoreData());
-        toolBar.add(restoreBtn);
+        return new Icon() {
+            @Override public int getIconWidth()  { return SIZE; }
+            @Override public int getIconHeight() { return SIZE; }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
+                                    RenderingHints.VALUE_STROKE_PURE);
+                g2.setColor(iconColor);
+                g2.translate(x, y);
+                g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND,
+                                             BasicStroke.JOIN_ROUND));
+
+                switch (key) {
+
+                    // ➕  New Expense — plus sign inside a circle
+                    case "new_expense" -> {
+                        g2.drawOval(1, 1, SIZE - 2, SIZE - 2);
+                        g2.drawLine(SIZE / 2, 5, SIZE / 2, SIZE - 5);
+                        g2.drawLine(5, SIZE / 2, SIZE - 5, SIZE / 2);
+                    }
+
+                    // 👤+  Add Roommate — person silhouette with a small +
+                    case "add_roommate" -> {
+                        // Head
+                        g2.drawOval(3, 1, 8, 7);
+                        // Body arc
+                        g2.drawArc(1, 10, 12, 10, 0, 180);
+                        // Plus sign (top-right)
+                        g2.drawLine(15, 7,  15, 13);
+                        g2.drawLine(12, 10, 18, 10);
+                    }
+
+                    // ↺  Refresh — circular arrows
+                    case "refresh" -> {
+                        // Outer arc (top-right portion)
+                        g2.drawArc(2, 2, SIZE - 4, SIZE - 4, 30, 270);
+                        // Arrow head at the end of the arc
+                        int[] ax = { SIZE - 5, SIZE - 2, SIZE - 1 };
+                        int[] ay = { 4,        2,        7        };
+                        g2.fillPolygon(ax, ay, 3);
+                    }
+
+                    // 📄  Export Report — page with an upward arrow
+                    case "export" -> {
+                        // Page outline
+                        g2.drawRect(3, 1, 11, 15);
+                        // Fold corner
+                        g2.drawLine(10, 1, 14, 5);
+                        g2.drawLine(10, 1, 10, 5);
+                        g2.drawLine(10, 5, 14, 5);
+                        // Up-arrow inside page
+                        g2.drawLine(8, 13, 8, 7);
+                        g2.drawLine(8, 7, 6, 10);
+                        g2.drawLine(8, 7, 10, 10);
+                    }
+
+                    default -> {
+                        // Fallback: simple square
+                        g2.drawRect(3, 3, SIZE - 6, SIZE - 6);
+                    }
+                }
+                g2.dispose();
+            }
+        };
     }
 
     private void layoutComponents() {
@@ -335,30 +508,27 @@ public class MainFrame extends JFrame {
         mainCenter.add(searchPanel, BorderLayout.NORTH);
         mainCenter.add(mainTabbedPane, BorderLayout.CENTER);
 
-        // Main center wrapper with search at top
-        JPanel mainCenterWrapper = new JPanel(new BorderLayout());
-        mainCenterWrapper.add(searchPanel, BorderLayout.NORTH);
-        mainCenterWrapper.add(mainTabbedPane, BorderLayout.CENTER);
+        // Bottom toolbar wrapper - toolbar above status bar, above bottom panel
+        JPanel bottomWrapper = new JPanel(new BorderLayout());
+        bottomWrapper.add(toolBar, BorderLayout.NORTH);
+        
+        // Status bar
+        JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
+        statusBar.add(statusLabel);
+        bottomWrapper.add(statusBar, BorderLayout.CENTER);
+        bottomWrapper.add(bottomPanel, BorderLayout.SOUTH);
 
-        // Top section with toolbar
-        JPanel topSection = new JPanel(new BorderLayout());
-        topSection.add(toolBar, BorderLayout.NORTH);
-
-        // Main center wrapper with toolbar
+        // Centre wrapper: search + tabs in center, toolbar + status + bottom panel at bottom
         JPanel centerWrapper = new JPanel(new BorderLayout());
-        centerWrapper.add(toolBar, BorderLayout.NORTH);
-        centerWrapper.add(mainCenterWrapper, BorderLayout.CENTER);
+        centerWrapper.add(mainCenter, BorderLayout.CENTER);
+        centerWrapper.add(bottomWrapper, BorderLayout.SOUTH);
 
-        // Bottom Panel
-        bottomPanel.setPreferredSize(new Dimension(0, 80));
-
-        // Add to main frame - simple layout
+        // Add to main frame
         add(formPanel, BorderLayout.WEST);
-        add(mainCenterWrapper, BorderLayout.CENTER);
-        add(bottomPanel, BorderLayout.SOUTH);
+        add(centerWrapper, BorderLayout.CENTER);
 
-        // Add padding around edges
-        ((JComponent) getContentPane()).setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        ((JComponent) getContentPane()).setBorder(
+                BorderFactory.createEmptyBorder(10, 10, 10, 10));
     }
     
     // Event handler methods
@@ -590,43 +760,6 @@ public class MainFrame extends JFrame {
         }
     }
     
-    private void performSearch() {
-        String query = searchField.getText().trim();
-        if (query.isEmpty()) {
-            ledgerPanel.loadLedger();
-            return;
-        }
-        
-        setStatus("Searching...");
-        try {
-            threads.BackgroundTask<List<model.Expense>, Void> task = 
-                new threads.BackgroundTask<List<model.Expense>, Void>("SearchExpenses") {
-                    private services.SearchService searchService = new services.SearchService();
-                    
-                    @Override
-                    protected List<model.Expense> doInBackground() throws Exception {
-                        List<model.Expense> allExpenses = controller.getAllExpenses();
-                        return new services.SearchService().searchByDescription(allExpenses, query);
-                    }
-                    
-                    @Override
-                    protected void onSuccess(List<model.Expense> result) {
-                        // Update ledger with search results
-                        ledgerPanel.updateLedger(result);
-                        setStatus("Found " + result.size() + " matching expenses");
-                    }
-                    
-                    @Override
-                    protected void onError(Throwable error) {
-                        setStatus("Search failed: " + error.getMessage());
-                    }
-                };
-            task.execute();
-        } catch (Exception e) {
-            setStatus("Search failed: " + e.getMessage());
-        }
-    }
-    
     private void showSettleDialog() {
         if (bottomPanel.getSettleComboBox().getItemCount() > 0) {
             // Trigger settle action via reflection
@@ -704,13 +837,40 @@ public class MainFrame extends JFrame {
         System.out.println("[STATUS] " + message);
     }
     
-    // Getter for search field (for menu access)
-    public JTextField getSearchField() {
-        return searchField;
-    }
-    
-    // Add method to LedgerPanel to update with search results
-    public void updateLedgerWithSearch(List<model.Expense> expenses) {
-        ledgerPanel.updateLedger(expenses);
+    private void performSearch() {
+        String query = searchField.getText().trim();
+        if (query.isEmpty()) {
+            ledgerPanel.loadLedger();
+            return;
+        }
+        
+        setStatus("Searching...");
+        try {
+            threads.BackgroundTask<List<model.Expense>, Void> task = 
+                new threads.BackgroundTask<List<model.Expense>, Void>("SearchExpenses") {
+                    private services.SearchService searchService = new services.SearchService();
+                    
+                    @Override
+                    protected List<model.Expense> doInBackground() throws Exception {
+                        List<model.Expense> allExpenses = controller.getAllExpenses();
+                        return new services.SearchService().searchByDescription(allExpenses, query);
+                    }
+                    
+                    @Override
+                    protected void onSuccess(List<model.Expense> result) {
+                        // Update ledger with search results
+                        ledgerPanel.updateLedger(result);
+                        setStatus("Found " + result.size() + " matching expenses");
+                    }
+                    
+                    @Override
+                    protected void onError(Throwable error) {
+                        setStatus("Search failed: " + error.getMessage());
+                    }
+                };
+            task.execute();
+        } catch (Exception e) {
+            setStatus("Search failed: " + e.getMessage());
+        }
     }
 }

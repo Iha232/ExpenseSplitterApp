@@ -22,6 +22,7 @@ import java.util.List;
  * - try-with-resources for resource management
  * - Batch operations
  * - Transaction management
+ * - PreparedStatement for search operations
  * 
  * Syllabus Topics:
  * - Interface implementation
@@ -217,5 +218,217 @@ public class ExpenseDAO implements ExpenseRepository {
             stmt.setInt(1, expenseId);
             return stmt.executeUpdate() > 0;
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Search methods - all use PreparedStatement, never modify data (SELECT only)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Base SQL used by every search query.
+     * Joins Roommates so we can filter/return payer_name.
+     */
+    private static final String SEARCH_BASE_SQL =
+        "SELECT e.expense_id, e.payer_id, e.description, e.total_amount, e.expense_date, " +
+        "       r.name AS payer_name " +
+        "FROM Expenses e " +
+        "JOIN Roommates r ON e.payer_id = r.member_id ";
+
+    /** Maps a ResultSet row to an Expense object (helper). */
+    private Expense mapRow(ResultSet rs) throws SQLException {
+        Expense e = new Expense();
+        e.setExpenseId(rs.getInt("expense_id"));
+        e.setPayerId(rs.getInt("payer_id"));
+        e.setDescription(rs.getString("description"));
+        e.setTotalAmount(rs.getBigDecimal("total_amount"));
+        e.setExpenseDate(rs.getDate("expense_date").toLocalDate());
+        e.setPayerName(rs.getString("payer_name"));
+        return e;
+    }
+
+    /**
+     * Searches expenses whose description contains the query string
+     * (case-insensitive, partial match) using PreparedStatement.
+     *
+     * Demonstrates: PreparedStatement with LIKE, parameter binding,
+     *               case-insensitive SQL search, SELECT-only (no data modification)
+     */
+    @Override
+    public List<Expense> searchExpensesByDescription(String description) throws SQLException {
+        List<Expense> results = new ArrayList<>();
+        String sql = SEARCH_BASE_SQL +
+                     "WHERE LOWER(e.description) LIKE ? " +
+                     "ORDER BY e.expense_date DESC, e.expense_id DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, "%" + description.trim().toLowerCase() + "%");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Searches expenses by payer name (case-insensitive, partial match)
+     * using PreparedStatement.
+     *
+     * Demonstrates: JOIN with PreparedStatement parameter, LIKE on joined column
+     */
+    @Override
+    public List<Expense> searchExpensesByPayer(String payerName) throws SQLException {
+        List<Expense> results = new ArrayList<>();
+        String sql = SEARCH_BASE_SQL +
+                     "WHERE LOWER(r.name) LIKE ? " +
+                     "ORDER BY e.expense_date DESC, e.expense_id DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, "%" + payerName.trim().toLowerCase() + "%");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Looks up a single expense by its exact numeric ID using PreparedStatement.
+     *
+     * Demonstrates: Exact-match PreparedStatement, integer parameter binding
+     */
+    @Override
+    public List<Expense> searchExpensesById(int expenseId) throws SQLException {
+        List<Expense> results = new ArrayList<>();
+        String sql = SEARCH_BASE_SQL +
+                     "WHERE e.expense_id = ? " +
+                     "ORDER BY e.expense_date DESC, e.expense_id DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, expenseId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Searches expenses whose date matches the given LocalDate exactly,
+     * using PreparedStatement.
+     *
+     * Demonstrates: Date parameter binding with PreparedStatement.setDate()
+     */
+    @Override
+    public List<Expense> searchExpensesByDate(java.time.LocalDate date) throws SQLException {
+        List<Expense> results = new ArrayList<>();
+        String sql = SEARCH_BASE_SQL +
+                     "WHERE e.expense_date = ? " +
+                     "ORDER BY e.expense_id DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDate(1, Date.valueOf(date));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Searches expenses whose total_amount equals the given value exactly,
+     * using PreparedStatement.
+     *
+     * Demonstrates: BigDecimal parameter binding with PreparedStatement.setBigDecimal()
+     */
+    @Override
+    public List<Expense> searchExpensesByAmount(java.math.BigDecimal amount) throws SQLException {
+        List<Expense> results = new ArrayList<>();
+        String sql = SEARCH_BASE_SQL +
+                     "WHERE e.total_amount = ? " +
+                     "ORDER BY e.expense_date DESC, e.expense_id DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setBigDecimal(1, amount);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Searches expenses whose date falls within [startDate, endDate],
+     * using PreparedStatement with two date parameters.
+     *
+     * Demonstrates: Multiple parameters, BETWEEN range query
+     */
+    @Override
+    public List<Expense> searchExpensesByDateRange(
+            java.time.LocalDate startDate, java.time.LocalDate endDate) throws SQLException {
+        List<Expense> results = new ArrayList<>();
+        String sql = SEARCH_BASE_SQL +
+                     "WHERE e.expense_date BETWEEN ? AND ? " +
+                     "ORDER BY e.expense_date DESC, e.expense_id DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDate(1, Date.valueOf(startDate));
+            stmt.setDate(2, Date.valueOf(endDate));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Searches expenses whose total_amount falls within [minAmount, maxAmount],
+     * using PreparedStatement.
+     *
+     * Demonstrates: BigDecimal range query with two bound parameters
+     */
+    @Override
+    public List<Expense> searchExpensesByAmountRange(
+            java.math.BigDecimal minAmount, java.math.BigDecimal maxAmount) throws SQLException {
+        List<Expense> results = new ArrayList<>();
+        String sql = SEARCH_BASE_SQL +
+                     "WHERE e.total_amount BETWEEN ? AND ? " +
+                     "ORDER BY e.expense_date DESC, e.expense_id DESC";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setBigDecimal(1, minAmount);
+            stmt.setBigDecimal(2, maxAmount);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapRow(rs));
+                }
+            }
+        }
+        return results;
     }
 }

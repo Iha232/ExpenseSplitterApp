@@ -76,4 +76,69 @@ public interface ExpenseRepository {
      * @throws Exception if database operation fails
      */
     boolean deleteExpense(int expenseId) throws Exception;
+    
+    /**
+     * Searches expenses by description using PreparedStatement.
+     * 
+     * @param description the description to search for (partial match, case-insensitive)
+     * @return list of matching expenses
+     * @throws Exception if database operation fails
+     */
+    List<Expense> searchExpensesByDescription(String description) throws Exception;
+    
+    /**
+     * Searches expenses by payer name using PreparedStatement.
+     * 
+     * @param payerName the payer name to search for (partial match, case-insensitive)
+     * @return list of matching expenses
+     * @throws Exception if database operation fails
+     */
+    List<Expense> searchExpensesByPayer(String payerName) throws Exception;
+    
+    /**
+     * Searches expenses by exact expense ID using PreparedStatement.
+     * 
+     * @param expenseId the expense ID to search for
+     * @return list of matching expenses (empty or single element)
+     * @throws Exception if database operation fails
+     */
+    List<Expense> searchExpensesById(int expenseId) throws Exception;
+    
+    /**
+     * Searches expenses by exact date using PreparedStatement.
+     * 
+     * @param date the date to search for
+     * @return list of matching expenses
+     * @throws Exception if database operation fails
+     */
+    List<Expense> searchExpensesByDate(java.time.LocalDate date) throws Exception;
+    
+    /**
+     * Searches expenses by exact amount using PreparedStatement.
+     * 
+     * @param amount the amount to search for
+     * @return list of matching expenses
+     * @throws Exception if database operation fails
+     */
+    List<Expense> searchExpensesByAmount(java.math.BigDecimal amount) throws Exception;
+    
+    /**
+     * Searches expenses by date range using PreparedStatement.
+     * 
+     * @param startDate the start date (inclusive)
+     * @param endDate the end date (inclusive)
+     * @return list of matching expenses
+     * @throws Exception if database operation fails
+     */
+    List<Expense> searchExpensesByDateRange(java.time.LocalDate startDate, java.time.LocalDate endDate) throws Exception;
+    
+    /**
+     * Searches expenses by amount range using PreparedStatement.
+     * 
+     * @param minAmount the minimum amount (inclusive)
+     * @param maxAmount the maximum amount (inclusive)
+     * @return list of matching expenses
+     * @throws Exception if database operation fails
+     */
+    List<Expense> searchExpensesByAmountRange(java.math.BigDecimal minAmount, java.math.BigDecimal maxAmount) throws Exception;
 }
