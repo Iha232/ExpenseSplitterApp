@@ -17,7 +17,7 @@ public class AuthFrame extends JFrame {
     }
 
     private void initializeFrame() {
-        setTitle("Expense Splitter - Login / Register");
+        setTitle("ExpenseSplitterApp - Login / Register");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(450, 500);
         setMinimumSize(new Dimension(400, 450));

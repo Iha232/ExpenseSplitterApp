@@ -78,7 +78,7 @@ public class MainFrame extends JFrame {
     }
 
     private void initializeFrame() {
-        setTitle("Apartment/Hostel Expense Splitter & Settlement Manager");
+        setTitle("ExpenseSplitterApp");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1000, 750));
         setLocationRelativeTo(null);
@@ -711,7 +711,7 @@ public class MainFrame extends JFrame {
     
     private void showAboutDialog() {
         JOptionPane.showMessageDialog(this,
-            "Expense Splitter & Settlement Manager\n" +
+            "ExpenseSplitterApp\n" +
             "Version 1.0\n\n" +
             "A Java Swing desktop application for managing shared expenses.\n\n" +
             "Features:\n" +
@@ -725,7 +725,7 @@ public class MainFrame extends JFrame {
             "- Backup & restore\n\n" +
             "Built with Java Swing, JDBC, and MySQL\n" +
             "Demonstrates Java Units 3 & 4 syllabus concepts",
-            "About Expense Splitter", JOptionPane.INFORMATION_MESSAGE);
+            "About ExpenseSplitterApp", JOptionPane.INFORMATION_MESSAGE);
     }
     
     private void showSyllabusInfo() {

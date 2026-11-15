@@ -18,7 +18,7 @@ import java.util.List;
  * Concrete background tasks for expense application operations.
  * 
  * This class demonstrates practical SwingWorker implementations
- * for the expense splitter application.
+ * for the ExpenseSplitterApp application.
  * 
  * Syllabus Topics:
  * - SwingWorker implementations

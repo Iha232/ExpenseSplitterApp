@@ -6,7 +6,7 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Apartment/Hostel Expense Splitter & Settlement Manager
+ * ExpenseSplitterApp
  * 
  * A Java Swing desktop application for managing shared expenses among roommates.
  * 
