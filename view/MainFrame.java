@@ -208,19 +208,19 @@ public class MainFrame extends JFrame {
         setJMenuBar(menuBar);
     }
     
-    // ── Toolbar button styling constants (matching Add Expense button) ──────────
+    // ── Toolbar button styling constants (matching Add Expense button layout, white background) ──────────
     // Reference: RoommateFormPanel.addExpenseButton uses:
     //   Background: new Color(46, 125, 50)  -- green
     //   Foreground: Color.BLACK
     //   Font: SansSerif, BOLD, 12
     //   FocusPainted: false
     //   Border: default (no custom border)
-    private static final Color BTN_ACTION_BG      = new Color(46, 125, 50);   // green
-    private static final Color BTN_ACTION_HOVER   = new Color(56, 142, 60);   // lighter green
-    private static final Color BTN_PRESSED        = new Color(36, 105, 40);   // darker green
+    private static final Color BTN_ACTION_BG      = Color.WHITE;              // white background
+    private static final Color BTN_ACTION_HOVER   = new Color(230, 230, 230); // light grey hover
+    private static final Color BTN_PRESSED        = new Color(210, 210, 210); // darker grey pressed
     private static final Color BTN_FG             = Color.BLACK;
 
-    private static final Color BTN_BORDER         = new Color(30, 90, 35);    // dark green border
+    private static final Color BTN_BORDER         = new Color(180, 180, 180); // grey border
 
     /**
      * Creates the bottom toolbar with two buttons matching the "Add Expense" button style:
