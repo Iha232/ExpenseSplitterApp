@@ -64,7 +64,6 @@ public class MainFrame extends JFrame {
     // UI Components
     private JMenuBar menuBar;
     private JToolBar toolBar;
-    private JTextField searchField;
     private JLabel statusLabel;
 
     public MainFrame(ExpenseController controller) {
@@ -209,23 +208,18 @@ public class MainFrame extends JFrame {
         setJMenuBar(menuBar);
     }
     
-    // ── Toolbar button styling constants (matching Add Expense button) ─────────
-    // Reference: RoommateFormPanel.addExpenseButton uses:
-    //   Background: new Color(46, 125, 50)  -- green
-    //   Foreground: Color.BLACK
-    //   Font: SansSerif, BOLD, 12
-    //   FocusPainted: false
-    //   Border: default (no custom border)
-    private static final Color BTN_ACTION_BG      = new Color(46, 125, 50);   // green
-    private static final Color BTN_ACTION_HOVER   = new Color(56, 142, 60);   // lighter green
-    private static final Color BTN_PRESSED        = new Color(36, 105, 40);   // darker green
-    private static final Color BTN_FG             = Color.BLACK;
+    // ── Toolbar button styling constants (neutral, modern appearance) ──────────
+    // Neutral buttons: white/light grey background, subtle grey border, dark text
+    private static final Color BTN_ACTION_BG      = new Color(250, 250, 250);   // white/light grey
+    private static final Color BTN_ACTION_HOVER   = new Color(235, 235, 235);   // light grey hover
+    private static final Color BTN_PRESSED        = new Color(220, 220, 220);   // slightly darker grey pressed
+    private static final Color BTN_FG             = new Color(51, 51, 51);      // dark grey text
 
-    private static final Color BTN_BORDER         = new Color(30, 90, 35);    // dark green border
+    private static final Color BTN_BORDER         = new Color(200, 200, 200);   // subtle grey border
 
     /**
-     * Creates the bottom toolbar with four fully-styled JButton components
-     * matching the "Add Expense" button style.
+     * Creates the bottom toolbar with two neutral-styled JButton components:
+     * Refresh All and Export Report.
      * 
      * Demonstrates:
      * - JToolBar / JButton creation
@@ -242,32 +236,6 @@ public class MainFrame extends JFrame {
                 BorderFactory.createMatteBorder(1, 0, 0, 0, BTN_BORDER),
                 BorderFactory.createEmptyBorder(6, 8, 6, 8)));
         toolBar.setBackground(new Color(252, 252, 253));
-
-        // ── New Expense ──
-        JButton newExpenseBtn = makeActionButton(
-                "New Expense", "new_expense",
-                "Add a new shared expense (Ctrl+N)");
-        newExpenseBtn.addActionListener(
-                e -> formPanel.getDescriptionField().requestFocusInWindow());
-        toolBar.add(newExpenseBtn);
-
-        toolBar.add(makeToolbarSeparator());
-
-        // ── Add Roommate ──
-        JButton addRoommateBtn = makeActionButton(
-                "Add Roommate", "add_roommate",
-                "Add a new roommate");
-        addRoommateBtn.addActionListener(e -> {
-            try {
-                java.lang.reflect.Method m =
-                        formPanel.getClass().getDeclaredMethod("showAddRoommateDialog");
-                m.setAccessible(true);
-                m.invoke(formPanel);
-            } catch (Exception ex) { /* ignore */ }
-        });
-        toolBar.add(addRoommateBtn);
-
-        toolBar.add(makeToolbarSeparator());
 
         // ── Refresh All ──
         JButton refreshBtn = makeActionButton(
@@ -464,63 +432,20 @@ public class MainFrame extends JFrame {
     private void layoutComponents() {
         setLayout(new BorderLayout(10, 10));
 
-        // Search field
-        searchField = new JTextField(30);
-        searchField.setToolTipText("Search expenses by description, payer, date, or amount (Ctrl+F)");
-        searchField.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    performSearch();
-                }
-            }
-        });
-
-        // Search panel
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        searchPanel.add(new JLabel("Search:"));
-        searchPanel.add(searchField);
-        
-        JButton searchBtn = new JButton("Search");
-        searchBtn.addActionListener(e -> performSearch());
-        searchPanel.add(searchBtn);
-        
-        JButton clearBtn = new JButton("Clear");
-        clearBtn.addActionListener(e -> {
-            searchField.setText("");
-            ledgerPanel.loadLedger();
-        });
-        searchPanel.add(clearBtn);
-        searchPanel.add(Box.createHorizontalGlue());
-        
-        statusLabel = new JLabel("Ready");
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
-        searchPanel.add(statusLabel);
-
         // Tabbed pane
         JTabbedPane mainTabbedPane = new JTabbedPane();
         mainTabbedPane.addTab("Dashboard", dashboardPanel);
         mainTabbedPane.addTab("Ledger", ledgerPanel);
         mainTabbedPane.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
-        // Main center panel with search at top, tabs below
-        JPanel mainCenter = new JPanel(new BorderLayout());
-        mainCenter.add(searchPanel, BorderLayout.NORTH);
-        mainCenter.add(mainTabbedPane, BorderLayout.CENTER);
-
-        // Bottom toolbar wrapper - toolbar above status bar, above bottom panel
+        // Bottom wrapper: toolbar at top, bottom panel at bottom
         JPanel bottomWrapper = new JPanel(new BorderLayout());
         bottomWrapper.add(toolBar, BorderLayout.NORTH);
-        
-        // Status bar
-        JPanel statusBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
-        statusBar.add(statusLabel);
-        bottomWrapper.add(statusBar, BorderLayout.CENTER);
         bottomWrapper.add(bottomPanel, BorderLayout.SOUTH);
 
-        // Centre wrapper: search + tabs in center, toolbar + status + bottom panel at bottom
+        // Centre wrapper: tabs in center, toolbar + bottom panel at bottom
         JPanel centerWrapper = new JPanel(new BorderLayout());
-        centerWrapper.add(mainCenter, BorderLayout.CENTER);
+        centerWrapper.add(mainTabbedPane, BorderLayout.CENTER);
         centerWrapper.add(bottomWrapper, BorderLayout.SOUTH);
 
         // Add to main frame
@@ -837,40 +762,4 @@ public class MainFrame extends JFrame {
         System.out.println("[STATUS] " + message);
     }
     
-    private void performSearch() {
-        String query = searchField.getText().trim();
-        if (query.isEmpty()) {
-            ledgerPanel.loadLedger();
-            return;
-        }
-        
-        setStatus("Searching...");
-        try {
-            threads.BackgroundTask<List<model.Expense>, Void> task = 
-                new threads.BackgroundTask<List<model.Expense>, Void>("SearchExpenses") {
-                    private services.SearchService searchService = new services.SearchService();
-                    
-                    @Override
-                    protected List<model.Expense> doInBackground() throws Exception {
-                        List<model.Expense> allExpenses = controller.getAllExpenses();
-                        return new services.SearchService().searchByDescription(allExpenses, query);
-                    }
-                    
-                    @Override
-                    protected void onSuccess(List<model.Expense> result) {
-                        // Update ledger with search results
-                        ledgerPanel.updateLedger(result);
-                        setStatus("Found " + result.size() + " matching expenses");
-                    }
-                    
-                    @Override
-                    protected void onError(Throwable error) {
-                        setStatus("Search failed: " + error.getMessage());
-                    }
-                };
-            task.execute();
-        } catch (Exception e) {
-            setStatus("Search failed: " + e.getMessage());
-        }
     }
-}
